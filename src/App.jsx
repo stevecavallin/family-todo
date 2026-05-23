@@ -34,31 +34,30 @@ const UC = {
   '2':{bg:'#FAECE7',bd:'#D85A30',tx:'#712B13'},
 };
 
-// ── Firebase DB helpers ────────────────────────────────────────────────────
+// ── Firebase DB ────────────────────────────────────────────────────────────
 const db = {
   get: async k => { try{const s=await get(ref(database,sk(k)));return s.exists()?s.val():null;}catch{return null;} },
   set: async (k,v) => { try{await set(ref(database,sk(k)),v);}catch(e){console.error('db.set',e);} },
 };
 
-// ── Shared styles ──────────────────────────────────────────────────────────
+// ── Stili condivisi ────────────────────────────────────────────────────────
 const S = {
   btn:(x={})=>({fontFamily:'inherit',fontSize:13,border:'0.5px solid var(--color-border-secondary)',borderRadius:7,background:'var(--color-background-primary)',color:'var(--color-text-primary)',cursor:'pointer',padding:'5px 12px',...x}),
   sm:{fontFamily:'inherit',fontSize:11,padding:'1px 7px',border:'0.5px solid var(--color-border-secondary)',borderRadius:5,background:'var(--color-background-primary)',color:'var(--color-text-primary)',cursor:'pointer'},
   inp:{fontFamily:'inherit',fontSize:13,padding:'5px 9px',border:'0.5px solid var(--color-border-secondary)',borderRadius:7,background:'var(--color-background-primary)',color:'var(--color-text-primary)',outline:'none',width:'100%',boxSizing:'border-box'},
 };
 
-// ── Toast notification (per notifiche quando app è in primo piano) ─────────
-function Toast({msg, onClose}) {
+// ── Toast ──────────────────────────────────────────────────────────────────
+function Toast({msg,onClose}){
   useEffect(()=>{const t=setTimeout(onClose,5000);return()=>clearTimeout(t);},[onClose]);
-  return (
-    <div style={{position:'fixed',bottom:24,right:24,zIndex:9999,background:'#1a1a1a',color:'#fff',padding:'12px 14px',borderRadius:12,fontSize:13.5,maxWidth:300,boxShadow:'0 4px 24px rgba(0,0,0,0.3)',display:'flex',gap:10,alignItems:'flex-start',animation:'slideIn .2s ease'}}>
+  return(
+    <div style={{position:'fixed',bottom:24,right:24,zIndex:9999,background:'#1a1a1a',color:'#fff',padding:'12px 14px',borderRadius:12,fontSize:13.5,maxWidth:300,boxShadow:'0 4px 24px rgba(0,0,0,0.3)',display:'flex',gap:10,alignItems:'flex-start'}}>
       <span style={{fontSize:18,flexShrink:0}}>🗓️</span>
       <div style={{flex:1}}>
         <div style={{fontWeight:600,marginBottom:2}}>{msg.title}</div>
         <div style={{opacity:.8,fontSize:12.5}}>{msg.body}</div>
       </div>
-      <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:15,padding:'0 2px',alignSelf:'flex-start'}}>✕</button>
-      <style>{`@keyframes slideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:15,padding:'0 2px'}}>✕</button>
     </div>
   );
 }
@@ -315,7 +314,7 @@ function UserPick({cfg,onPick}){
   );
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────
+// ── App principale ─────────────────────────────────────────────────────────
 export default function App(){
   const[user,    setUser]    = useState(null);
   const[cfg,     setCfg]     = useState({u1:'Persona 1',u2:'Persona 2'});
@@ -325,7 +324,7 @@ export default function App(){
   const[tab,     setTab]     = useState('cal');
   const[ready,   setReady]   = useState(false);
   const[isSetup, setIsSetup] = useState(false);
-  const[toast,   setToast]   = useState(null);   // {title, body}
+  const[toast,   setToast]   = useState(null);
 
   const tplsR  = useRef([]);
   const daysR  = useRef({});
@@ -333,7 +332,6 @@ export default function App(){
   useEffect(()=>{tplsR.current=tpls;},[tpls]);
   useEffect(()=>{daysR.current=days;},[days]);
 
-  // ── Build tasks for one day from current templates
   const buildDay=useCallback((d,dow,wn)=>
     tplsR.current.filter(t=>{
       if(t.freq==='weekly')   return t.days.includes(dow);
@@ -343,7 +341,6 @@ export default function App(){
     }).map(t=>({id:uid(),tid:t.id,title:t.title,per:t.per,done:false,doneAt:null,movedFrom:null}))
   ,[]);
 
-  // ── Generate week (only fills days not yet in storage)
   const genWeek=useCallback(async mon=>{
     const wk=wkKey(mon);
     let wd=wkCache.current[wk];
@@ -354,7 +351,6 @@ export default function App(){
     setDays(prev=>({...prev,...wd}));
   },[buildDay]);
 
-  // ── Rebuild template tasks for today onwards (on template change)
   const regenerateFuture=useCallback(async newTpls=>{
     const now=now0();
     for(const mon of[getMon(now),addD(getMon(now),7)]){
@@ -379,7 +375,7 @@ export default function App(){
     }
   },[]);
 
-  // ── Initial load
+  // Caricamento iniziale
   useEffect(()=>{
     (async()=>{
       const[c,t,sp]=await Promise.all([db.get('cfg'),db.get('tpls'),db.get('setup')]);
@@ -394,14 +390,14 @@ export default function App(){
 
   useEffect(()=>{if(!ready)return;genWeek(week);genWeek(addD(week,7));},[ready,week,genWeek]);
 
-  // ── Real-time Firebase listeners
+  // Listener real-time Firebase
   useEffect(()=>{
     if(!ready)return;
     const wk=wkKey(week);
-    const unsub=onValue(ref(database,sk(wk)),snap=>{
+    const u=onValue(ref(database,sk(wk)),snap=>{
       if(snap.exists()){wkCache.current[wk]=snap.val();setDays(prev=>({...prev,...snap.val()}));}
     });
-    return()=>unsub();
+    return()=>u();
   },[ready,week]);
 
   useEffect(()=>{
@@ -411,41 +407,35 @@ export default function App(){
     return()=>{u1();u2();};
   },[ready]);
 
-  // ── Push notifications: registrazione token FCM ────────────────────────
+  // ── Registrazione token FCM (un solo token per utente, sovrascrive sempre)
   useEffect(()=>{
-    if(!user||!ready) return;
+    if(!user||!ready)return;
     (async()=>{
       try{
-        if(!('Notification' in window)) return;
+        if(!('Notification' in window))return;
         const permission=await Notification.requestPermission();
-        if(permission!=='granted') return;
-
-        // Recupera o crea un ID dispositivo univoco
-        let deviceId=localStorage.getItem('fcm_device_id');
-        if(!deviceId){deviceId=uid();localStorage.setItem('fcm_device_id',deviceId);}
-
+        if(permission!=='granted')return;
         const token=await getToken(messaging,{vapidKey});
         if(token){
-          // Salva token sotto l'utente corrente in Firebase
-          await db.set(`fcm_tokens/${user}/${deviceId}`,token);
+          // Salva UN solo token per utente — sovrascrive qualunque token precedente
+          await db.set(`fcm_tokens/${user}`,{main:token});
         }
       }catch(e){
-  alert('Errore notifiche: ' + e.message);
-}
+        console.log('Notifiche non disponibili:',e.message);
+      }
     })();
   },[user,ready]);
 
-  // ── Push notifications: ascolta messaggi in primo piano ───────────────
+  // Notifiche in primo piano (app aperta)
   useEffect(()=>{
-    // onMessage gestisce le notifiche quando l'app è APERTA
-    const unsub=onMessage(messaging,payload=>{
+    const u=onMessage(messaging,payload=>{
       const{title,body}=payload.notification||{};
-      if(title) setToast({title,body:body||''});
+      if(title)setToast({title,body:body||''});
     });
-    return()=>unsub();
+    return()=>u();
   },[]);
 
-  // ── Auto-move incomplete past tasks to today (once per session)
+  // Auto-sposta task non completati al giorno corrente
   const autoMoved=useRef(false);
   useEffect(()=>{
     if(!ready||autoMoved.current)return;
@@ -471,7 +461,7 @@ export default function App(){
     },300);
   },[ready]);
 
-  // ── Task actions ───────────────────────────────────────────────────────
+  // Azioni sui task
   const saveDay=async(dateStr,tasks)=>{
     const wk=wkKey(getMon(fromKey(dateStr)));
     if(!wkCache.current[wk])wkCache.current[wk]={};
@@ -485,15 +475,14 @@ export default function App(){
 
   const addTask=async(dateStr,title,per)=>{
     await saveDay(dateStr,[...(days[dateStr]||[]),{id:uid(),tid:null,title,per,done:false,doneAt:null,movedFrom:null}]);
-
-    // 🔔 Invia notifica SOLO se sto aggiungendo sulla lista dell'ALTRA persona
+    // Notifica solo se aggiungo sulla lista dell'ALTRA persona
     if(user&&per!==user&&isSetup){
       const addedBy=user==='1'?cfg.u1:cfg.u2;
       fetch('/.netlify/functions/notify',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({toUser:per,taskTitle:title,addedBy}),
-      }).catch(()=>{}); // fire & forget, non bloccare l'UI
+      }).catch(()=>{});
     }
   };
 
@@ -506,7 +495,6 @@ export default function App(){
   const saveTpls=async nt=>{setTpls(nt);tplsR.current=nt;await db.set('tpls',nt);await regenerateFuture(nt);};
   const saveCfg =async c=>{setCfg(c);await db.set('cfg',c);await db.set('setup',true);setIsSetup(true);};
 
-  // ── Render ─────────────────────────────────────────────────────────────
   if(!ready)   return<div style={{padding:'4rem',textAlign:'center',color:'var(--color-text-secondary)',fontSize:15}}>Connessione a Firebase…</div>;
   if(!isSetup) return<Setup onDone={saveCfg}/>;
   if(!user)    return<UserPick cfg={cfg} onPick={setUser}/>;
@@ -514,7 +502,6 @@ export default function App(){
 
   return(
     <div style={{maxWidth:940,margin:'0 auto'}}>
-      {/* Header */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,padding:'0 4px'}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <div style={{width:36,height:36,borderRadius:'50%',background:UC[user].bg,border:`2px solid ${UC[user].bd}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:UC[user].tx}}>{uName.slice(0,2).toUpperCase()}</div>
@@ -522,8 +509,6 @@ export default function App(){
         </div>
         <button onClick={()=>setUser(null)} style={S.btn({fontSize:12,padding:'3px 10px'})}>Cambia</button>
       </div>
-
-      {/* Tabs */}
       <div style={{display:'flex',marginBottom:18,borderBottom:'1px solid var(--color-border-tertiary)'}}>
         {[['cal','Calendario'],['tpls','Attività'],['set','Impostazioni']].map(([v,lbl])=>(
           <button key={v} onClick={()=>setTab(v)} style={{fontFamily:'inherit',fontSize:13,padding:'8px 16px',background:'none',border:'none',borderBottom:tab===v?'2px solid var(--color-text-primary)':'2px solid transparent',color:tab===v?'var(--color-text-primary)':'var(--color-text-secondary)',cursor:'pointer',fontWeight:tab===v?600:400,marginBottom:-1}}>
@@ -531,13 +516,10 @@ export default function App(){
           </button>
         ))}
       </div>
-
-      {tab==='cal'  && <CalTab  cfg={cfg} days={days} week={week} onWeek={setWeek} onToggle={toggle} onDel={delTask} onAdd={addTask} onMove={moveTask}/>}
-      {tab==='tpls' && <TplView tpls={tpls} cfg={cfg} onSave={saveTpls}/>}
-      {tab==='set'  && <CfgView cfg={cfg} onSave={saveCfg}/>}
-
-      {/* Toast per notifiche in primo piano */}
-      {toast && <Toast msg={toast} onClose={()=>setToast(null)}/>}
+      {tab==='cal'  &&<CalTab  cfg={cfg} days={days} week={week} onWeek={setWeek} onToggle={toggle} onDel={delTask} onAdd={addTask} onMove={moveTask}/>}
+      {tab==='tpls' &&<TplView tpls={tpls} cfg={cfg} onSave={saveTpls}/>}
+      {tab==='set'  &&<CfgView cfg={cfg} onSave={saveCfg}/>}
+      {toast&&<Toast msg={toast} onClose={()=>setToast(null)}/>}
     </div>
   );
 }
