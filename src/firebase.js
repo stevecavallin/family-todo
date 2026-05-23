@@ -7,13 +7,13 @@ import { getMessaging }  from 'firebase/messaging';
 // I valori vengono letti dal file .env — non scrivere i segreti direttamente qui
 // ─────────────────────────────────────────────────────────────────────────────
 const firebaseConfig = {
-  apiKey: "AIzaSyASC1ZEggL4Pq7_VHhKw5csjGrKg-6-XQg",
-  authDomain: "family-to-do-9e83b.firebaseapp.com",
-  databaseURL: "https://family-to-do-9e83b-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "family-to-do-9e83b",
-  storageBucket: "family-to-do-9e83b.firebasestorage.app",
-  messagingSenderId: "293381940279",
-  appId: "1:293381940279:web:c5319cba9cd68ee98a0bb2"
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL:       import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
