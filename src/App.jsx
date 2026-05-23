@@ -430,9 +430,8 @@ export default function App(){
           await db.set(`fcm_tokens/${user}/${deviceId}`,token);
         }
       }catch(e){
-        // Notifiche non supportate o negate — l'app funziona ugualmente
-        console.log('Notifiche non disponibili:',e.message);
-      }
+  alert('Errore notifiche: ' + e.message);
+}
     })();
   },[user,ready]);
 
