@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ref, get, set, onValue } from 'firebase/database';
-import { getToken, onMessage }    from 'firebase/messaging';
+import { getToken } from 'firebase/messaging';
 import { database, messaging, vapidKey } from './firebase.js';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
@@ -46,21 +46,6 @@ const S = {
   sm:{fontFamily:'inherit',fontSize:11,padding:'1px 7px',border:'0.5px solid var(--color-border-secondary)',borderRadius:5,background:'var(--color-background-primary)',color:'var(--color-text-primary)',cursor:'pointer'},
   inp:{fontFamily:'inherit',fontSize:13,padding:'5px 9px',border:'0.5px solid var(--color-border-secondary)',borderRadius:7,background:'var(--color-background-primary)',color:'var(--color-text-primary)',outline:'none',width:'100%',boxSizing:'border-box'},
 };
-
-// ── Toast ──────────────────────────────────────────────────────────────────
-function Toast({msg,onClose}){
-  useEffect(()=>{const t=setTimeout(onClose,5000);return()=>clearTimeout(t);},[onClose]);
-  return(
-    <div style={{position:'fixed',bottom:24,right:24,zIndex:9999,background:'#1a1a1a',color:'#fff',padding:'12px 14px',borderRadius:12,fontSize:13.5,maxWidth:300,boxShadow:'0 4px 24px rgba(0,0,0,0.3)',display:'flex',gap:10,alignItems:'flex-start'}}>
-      <span style={{fontSize:18,flexShrink:0}}>🗓️</span>
-      <div style={{flex:1}}>
-        <div style={{fontWeight:600,marginBottom:2}}>{msg.title}</div>
-        <div style={{opacity:.8,fontSize:12.5}}>{msg.body}</div>
-      </div>
-      <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:15,padding:'0 2px'}}>✕</button>
-    </div>
-  );
-}
 
 // ── Checkbox ───────────────────────────────────────────────────────────────
 function Checkbox({done,per,onClick}){
@@ -324,7 +309,6 @@ export default function App(){
   const[tab,     setTab]     = useState('cal');
   const[ready,   setReady]   = useState(false);
   const[isSetup, setIsSetup] = useState(false);
-  const[toast,   setToast]   = useState(null);
 
   const tplsR  = useRef([]);
   const daysR  = useRef({});
@@ -375,7 +359,7 @@ export default function App(){
     }
   },[]);
 
-  // Caricamento iniziale
+  // ── Caricamento iniziale ───────────────────────────────────────────────
   useEffect(()=>{
     (async()=>{
       const[c,t,sp]=await Promise.all([db.get('cfg'),db.get('tpls'),db.get('setup')]);
@@ -390,7 +374,7 @@ export default function App(){
 
   useEffect(()=>{if(!ready)return;genWeek(week);genWeek(addD(week,7));},[ready,week,genWeek]);
 
-  // Listener real-time Firebase
+  // ── Listener real-time Firebase ────────────────────────────────────────
   useEffect(()=>{
     if(!ready)return;
     const wk=wkKey(week);
@@ -407,7 +391,7 @@ export default function App(){
     return()=>{u1();u2();};
   },[ready]);
 
-  // ── Registrazione token FCM (un solo token per utente, sovrascrive sempre)
+  // ── Registrazione token FCM ────────────────────────────────────────────
   useEffect(()=>{
     if(!user||!ready)return;
     (async()=>{
@@ -417,7 +401,13 @@ export default function App(){
         if(permission!=='granted')return;
         const token=await getToken(messaging,{vapidKey});
         if(token){
-          // Salva UN solo token per utente — sovrascrive qualunque token precedente
+          const otherUser=user==='1'?'2':'1';
+          // Rimuovi questo token dall'altro utente se presente (evita notifiche doppie)
+          const otherData=await db.get(`fcm_tokens/${otherUser}`);
+          if(otherData&&Object.values(otherData).includes(token)){
+            await db.set(`fcm_tokens/${otherUser}`,null);
+          }
+          // Salva sotto l'utente corrente (sovrascrive sempre)
           await db.set(`fcm_tokens/${user}`,{main:token});
         }
       }catch(e){
@@ -426,16 +416,7 @@ export default function App(){
     })();
   },[user,ready]);
 
-  // Notifiche in primo piano (app aperta)
-  useEffect(()=>{
-    const u=onMessage(messaging,payload=>{
-      const{title,body}=payload.notification||{};
-      if(title)setToast({title,body:body||''});
-    });
-    return()=>u();
-  },[]);
-
-  // Auto-sposta task non completati al giorno corrente
+  // ── Auto-sposta task non completati al giorno corrente ─────────────────
   const autoMoved=useRef(false);
   useEffect(()=>{
     if(!ready||autoMoved.current)return;
@@ -461,7 +442,7 @@ export default function App(){
     },300);
   },[ready]);
 
-  // Azioni sui task
+  // ── Azioni sui task ────────────────────────────────────────────────────
   const saveDay=async(dateStr,tasks)=>{
     const wk=wkKey(getMon(fromKey(dateStr)));
     if(!wkCache.current[wk])wkCache.current[wk]={};
@@ -495,6 +476,7 @@ export default function App(){
   const saveTpls=async nt=>{setTpls(nt);tplsR.current=nt;await db.set('tpls',nt);await regenerateFuture(nt);};
   const saveCfg =async c=>{setCfg(c);await db.set('cfg',c);await db.set('setup',true);setIsSetup(true);};
 
+  // ── Render ─────────────────────────────────────────────────────────────
   if(!ready)   return<div style={{padding:'4rem',textAlign:'center',color:'var(--color-text-secondary)',fontSize:15}}>Connessione a Firebase…</div>;
   if(!isSetup) return<Setup onDone={saveCfg}/>;
   if(!user)    return<UserPick cfg={cfg} onPick={setUser}/>;
@@ -519,7 +501,6 @@ export default function App(){
       {tab==='cal'  &&<CalTab  cfg={cfg} days={days} week={week} onWeek={setWeek} onToggle={toggle} onDel={delTask} onAdd={addTask} onMove={moveTask}/>}
       {tab==='tpls' &&<TplView tpls={tpls} cfg={cfg} onSave={saveTpls}/>}
       {tab==='set'  &&<CfgView cfg={cfg} onSave={saveCfg}/>}
-      {toast&&<Toast msg={toast} onClose={()=>setToast(null)}/>}
     </div>
   );
 }
