@@ -427,7 +427,7 @@ export default function App(){
         const token=await getToken(messaging,{vapidKey});
         if (token) {
           // Sovrascrive tutti i token precedenti con solo quello corrente
-          await db.set(`fcm_tokens/${user}`, { main: token });
+          wait db.set(`fcm_tokens/${user}/${deviceId}`, token);
         }
       }catch(e){
   alert('Errore notifiche: ' + e.message);
