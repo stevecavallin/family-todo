@@ -425,9 +425,9 @@ export default function App(){
         if(!deviceId){deviceId=uid();localStorage.setItem('fcm_device_id',deviceId);}
 
         const token=await getToken(messaging,{vapidKey});
-        if (token) {
-          // Sovrascrive tutti i token precedenti con solo quello corrente
-          wait db.set(`fcm_tokens/${user}/${deviceId}`, token);
+        if(token){
+          // Salva token sotto l'utente corrente in Firebase
+          await db.set(`fcm_tokens/${user}/${deviceId}`,token);
         }
       }catch(e){
   alert('Errore notifiche: ' + e.message);
