@@ -14,17 +14,8 @@ firebase.initializeApp({
   appId:             "__APP_ID__"
 });
 
-const messaging = firebase.messaging();
-
-// Gestisce le notifiche quando l'app è in background o chiusa
-messaging.onBackgroundMessage(payload => {
-  const { title, body } = payload.notification || {};
-  if (!title) return;
-  self.registration.showNotification(title, {
-    body:  body  || '',
-    icon:  '/favicon.ico',
-    badge: '/favicon.ico',
-    tag:   'family-todo',          // sostituisce notifiche precedenti
-    renotify: true,
-  });
-});
+// Il service worker deve essere inizializzato per ricevere i messaggi FCM,
+// ma NON deve chiamare showNotification manualmente:
+// il browser lo fa già in automatico dal campo "notification" del messaggio.
+// Chiamarlo di nuovo qui causerebbe notifiche doppie.
+firebase.messaging();
