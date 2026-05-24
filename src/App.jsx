@@ -29,9 +29,11 @@ const DC = [
   {bg:'#F0FDFA',bd:'#0D9488',tx:'#0F766E',name:'Sabato'},
 ];
 
+// UC include anche 'S' per i task condivisi
 const UC = {
   '1':{bg:'#E1F5EE',bd:'#1D9E75',tx:'#085041'},
   '2':{bg:'#FAECE7',bd:'#D85A30',tx:'#712B13'},
+  'S':{bg:'#EFF6FF',bd:'#0284C7',tx:'#075985'}, // azzurro neutro = condiviso
 };
 
 // ── Firebase DB ────────────────────────────────────────────────────────────
@@ -49,7 +51,7 @@ const S = {
 
 // ── Checkbox ───────────────────────────────────────────────────────────────
 function Checkbox({done,per,onClick}){
-  const c=UC[per];
+  const c=UC[per]||UC['1'];
   return(
     <div onClick={onClick} style={{width:18,height:18,borderRadius:5,flexShrink:0,cursor:'pointer',border:`2px solid ${done?c.bd:'#B0B8C1'}`,background:done?c.bg:'#fff',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}>
       {done&&<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2" stroke={c.tx} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -100,7 +102,7 @@ function AddInline({dateStr,per,onAdd}){
   );
 }
 
-// ── PersonSection ──────────────────────────────────────────────────────────
+// ── PersonSection (usata anche per 'S' condiviso) ──────────────────────────
 function PersonSec({per,name,tasks,dateStr,weekDays,onToggle,onDel,onAdd,onMove}){
   const c=UC[per],done=tasks.filter(t=>t.done).length;
   return(
@@ -121,7 +123,9 @@ function PersonSec({per,name,tasks,dateStr,weekDays,onToggle,onDel,onAdd,onMove}
 function TodayCard({cfg,days,weekDays,onToggle,onDel,onAdd,onMove}){
   const today=now0(),k=toKey(today),tasks=days[k]||[];
   const dc=DC[today.getDay()];
-  const t1=tasks.filter(t=>t.per==='1'),t2=tasks.filter(t=>t.per==='2');
+  const t1=tasks.filter(t=>t.per==='1');
+  const t2=tasks.filter(t=>t.per==='2');
+  const tS=tasks.filter(t=>t.per==='S');
   const allDone=tasks.length>0&&tasks.every(t=>t.done);
   return(
     <div style={{background:dc.bg,borderRadius:18,padding:'20px 18px 18px',border:`1px solid ${dc.bd}30`,marginBottom:16}}>
@@ -133,13 +137,20 @@ function TodayCard({cfg,days,weekDays,onToggle,onDel,onAdd,onMove}){
         </div>
         {allDone&&<div style={{fontSize:28,marginTop:2}}>🎉</div>}
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+
+      {/* Sezioni personali */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
         <div style={{background:'rgba(255,255,255,0.65)',borderRadius:12,padding:'10px'}}>
           <PersonSec per="1" name={cfg.u1} tasks={t1} dateStr={k} weekDays={weekDays} onToggle={onToggle} onDel={onDel} onAdd={onAdd} onMove={onMove}/>
         </div>
         <div style={{background:'rgba(255,255,255,0.65)',borderRadius:12,padding:'10px'}}>
           <PersonSec per="2" name={cfg.u2} tasks={t2} dateStr={k} weekDays={weekDays} onToggle={onToggle} onDel={onDel} onAdd={onAdd} onMove={onMove}/>
         </div>
+      </div>
+
+      {/* Sezione condivisa — larghezza piena */}
+      <div style={{background:'rgba(255,255,255,0.65)',borderRadius:12,padding:'10px',border:`1px dashed ${UC['S'].bd}60`}}>
+        <PersonSec per="S" name="🤝 Condiviso" tasks={tS} dateStr={k} weekDays={weekDays} onToggle={onToggle} onDel={onDel} onAdd={onAdd} onMove={onMove}/>
       </div>
     </div>
   );
@@ -162,19 +173,34 @@ function WeekGrid({cfg,days,week,onWeek,onToggle,onDel,onAdd,onMove}){
       <div style={{display:'flex',gap:5,overflowX:'auto',paddingBottom:8}}>
         {wDays.map((d,i)=>{
           const k=toKey(d),tasks=days[k]||[],isToday=k===todayStr,isPast=d<now,dc=DC[d.getDay()];
+          const t1=tasks.filter(t=>t.per==='1');
+          const t2=tasks.filter(t=>t.per==='2');
+          const tS=tasks.filter(t=>t.per==='S');
           return(
             <div key={k} style={{minWidth:130,flex:'1 1 130px',background:isToday?dc.bg:'var(--color-background-primary)',border:isToday?`1.5px solid ${dc.bd}50`:'0.5px solid var(--color-border-tertiary)',borderRadius:11,padding:'8px 7px',opacity:isPast&&!isToday?.7:1}}>
               <div style={{marginBottom:7}}>
                 <div style={{fontSize:9.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:isToday?dc.tx:'var(--color-text-tertiary)'}}>{DS[i]}</div>
                 <div style={{fontSize:20,fontWeight:600,lineHeight:1.1,color:isToday?dc.tx:'var(--color-text-primary)'}}>{d.getDate()}</div>
               </div>
+
+              {/* Persona 1 */}
               <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:4}}><div style={{width:6,height:6,borderRadius:'50%',background:UC['1'].bd}}/><span style={{fontSize:9.5,color:UC['1'].tx,fontWeight:600}}>{cfg.u1}</span></div>
-              {tasks.filter(t=>t.per==='1').map(t=><TaskCard key={t.id} task={t} dateStr={k} weekDays={wDays} onToggle={onToggle} onDel={onDel} onMove={onMove}/>)}
+              {t1.map(t=><TaskCard key={t.id} task={t} dateStr={k} weekDays={wDays} onToggle={onToggle} onDel={onDel} onMove={onMove}/>)}
               <AddInline dateStr={k} per="1" onAdd={onAdd}/>
+
               <div style={{borderTop:'0.5px solid var(--color-border-tertiary)',margin:'6px 0'}}/>
+
+              {/* Persona 2 */}
               <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:4}}><div style={{width:6,height:6,borderRadius:'50%',background:UC['2'].bd}}/><span style={{fontSize:9.5,color:UC['2'].tx,fontWeight:600}}>{cfg.u2}</span></div>
-              {tasks.filter(t=>t.per==='2').map(t=><TaskCard key={t.id} task={t} dateStr={k} weekDays={wDays} onToggle={onToggle} onDel={onDel} onMove={onMove}/>)}
+              {t2.map(t=><TaskCard key={t.id} task={t} dateStr={k} weekDays={wDays} onToggle={onToggle} onDel={onDel} onMove={onMove}/>)}
               <AddInline dateStr={k} per="2" onAdd={onAdd}/>
+
+              <div style={{borderTop:`0.5px dashed ${UC['S'].bd}80`,margin:'6px 0'}}/>
+
+              {/* Condiviso */}
+              <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:4}}><div style={{width:6,height:6,borderRadius:'50%',background:UC['S'].bd}}/><span style={{fontSize:9.5,color:UC['S'].tx,fontWeight:600}}>Condiviso</span></div>
+              {tS.map(t=><TaskCard key={t.id} task={t} dateStr={k} weekDays={wDays} onToggle={onToggle} onDel={onDel} onMove={onMove}/>)}
+              <AddInline dateStr={k} per="S" onAdd={onAdd}/>
             </div>
           );
         })}
@@ -201,46 +227,122 @@ function CalTab({cfg,days,week,onWeek,onToggle,onDel,onAdd,onMove}){
   );
 }
 
+// ── Form template ──────────────────────────────────────────────────────────
+function TplForm({cfg,initial,onSave,onCancel}){
+  const[form,setForm]=useState(initial);
+  const togDay=d=>setForm(p=>({...p,days:p.days.includes(d)?p.days.filter(x=>x!==d):[...p.days,d]}));
+  const save=()=>{if(!form.title.trim())return;onSave({...form,days:form.days.length?[...form.days]:[1]});};
+  return(
+    <div style={{background:'var(--color-background-secondary)',border:'0.5px solid var(--color-border-secondary)',borderRadius:10,padding:14,marginTop:10}}>
+      <div style={{marginBottom:10}}>
+        <label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:4}}>Attività</label>
+        <input value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Es. Palestra, Spesa, Meditazione…" style={S.inp}/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+        <div>
+          <label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:4}}>Persona</label>
+          <select value={form.per} onChange={e=>setForm(p=>({...p,per:e.target.value}))} style={S.inp}>
+            <option value="1">{cfg.u1}</option>
+            <option value="2">{cfg.u2}</option>
+            <option value="S">🤝 Condiviso</option>
+          </select>
+        </div>
+        <div>
+          <label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:4}}>Frequenza</label>
+          <select value={form.freq} onChange={e=>setForm(p=>({...p,freq:e.target.value}))} style={S.inp}>
+            <option value="weekly">Settimanale</option>
+            <option value="biweekly">Bisettimanale</option>
+            <option value="monthly">Mensile</option>
+          </select>
+        </div>
+      </div>
+      {(form.freq==='weekly'||form.freq==='biweekly')&&(
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:6}}>Giorni</label>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+            {DS.map((d,i)=>{const day=i+1,sel=form.days.includes(day),c=UC[form.per]||UC['1'];return(
+              <button key={i} onClick={()=>togDay(day)} style={{fontSize:11.5,padding:'3px 9px',borderRadius:20,background:sel?c.bg:'transparent',border:`1px solid ${sel?c.bd:'var(--color-border-secondary)'}`,color:sel?c.tx:'var(--color-text-secondary)',cursor:'pointer',fontFamily:'inherit'}}>{d}</button>
+            );})}
+          </div>
+        </div>
+      )}
+      {form.freq==='biweekly'&&(
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:5}}>Ricorrenza</label>
+          <div style={{display:'flex',gap:6}}>
+            {['Sett. pari','Sett. dispari'].map((lbl,i)=>(
+              <button key={i} onClick={()=>setForm(p=>({...p,parity:i}))} style={{fontSize:11.5,padding:'3px 10px',borderRadius:20,background:form.parity===i?'var(--color-background-info)':'transparent',border:`1px solid ${form.parity===i?'var(--color-border-info)':'var(--color-border-secondary)'}`,cursor:'pointer',fontFamily:'inherit'}}>{lbl}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {form.freq==='monthly'&&(
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:4}}>Giorno del mese</label>
+          <input type="number" min="1" max="31" value={form.dom} onChange={e=>setForm(p=>({...p,dom:+e.target.value||1}))} style={{...S.inp,width:70}}/>
+        </div>
+      )}
+      <div style={{display:'flex',gap:8}}>
+        <button onClick={save} style={S.btn({padding:'5px 16px'})}>Salva</button>
+        <button onClick={onCancel} style={S.btn({padding:'5px 16px'})}>Annulla</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Templates ──────────────────────────────────────────────────────────────
 function TplView({tpls,cfg,onSave}){
-  const[list,setList]=useState(tpls);const[show,setShow]=useState(false);
-  const[form,setForm]=useState({title:'',per:'1',freq:'weekly',days:[],parity:0,dom:1});
+  const[list,setList]=useState(tpls);
+  const[mode,setMode]=useState(null);
+  const[editId,setEditId]=useState(null);
   useEffect(()=>setList(tpls),[tpls]);
   const persist=nl=>{setList(nl);onSave(nl);};
-  const addT=()=>{if(!form.title.trim())return;persist([...list,{...form,id:uid(),days:form.days.length?[...form.days]:[1]}]);setShow(false);setForm({title:'',per:'1',freq:'weekly',days:[],parity:0,dom:1});};
-  const togDay=d=>setForm(p=>({...p,days:p.days.includes(d)?p.days.filter(x=>x!==d):[...p.days,d]}));
+  const close=()=>{setMode(null);setEditId(null);};
+  const handleSave=formData=>{
+    if(mode==='edit') persist(list.map(t=>t.id===editId?{...formData,id:editId}:t));
+    else persist([...list,{...formData,id:uid()}]);
+    close();
+  };
+  const emptyForm={title:'',per:'1',freq:'weekly',days:[],parity:0,dom:1};
+  const editingTpl=editId?list.find(t=>t.id===editId):null;
+  const formInitial=mode==='edit'&&editingTpl
+    ?{title:editingTpl.title,per:editingTpl.per,freq:editingTpl.freq,days:[...editingTpl.days],parity:editingTpl.parity||0,dom:editingTpl.dom||1}
+    :emptyForm;
   const FL={weekly:'Settimanale',biweekly:'Bisettimanale',monthly:'Mensile'};
+  const perName=(per)=>per==='1'?cfg.u1:per==='2'?cfg.u2:'🤝 Condiviso';
   return(
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
         <span style={{fontSize:15,fontWeight:500}}>Attività ricorrenti</span>
-        {!show&&<button onClick={()=>setShow(true)} style={S.btn()}>+ Aggiungi</button>}
+        {!mode&&<button onClick={()=>setMode('add')} style={S.btn()}>+ Aggiungi</button>}
       </div>
-      {!list.length&&!show&&<p style={{color:'var(--color-text-secondary)',fontSize:13.5,lineHeight:1.6}}>Nessuna attività ricorrente. Aggiungine una per popolare automaticamente il calendario ogni settimana.</p>}
+      {!list.length&&!mode&&<p style={{color:'var(--color-text-secondary)',fontSize:13.5,lineHeight:1.6}}>Nessuna attività ricorrente. Aggiungine una per popolare automaticamente il calendario ogni settimana.</p>}
       {list.map(t=>{
-        const c=UC[t.per],pn=t.per==='1'?cfg.u1:cfg.u2;
+        const c=UC[t.per]||UC['1'];
         const dL=t.freq==='monthly'?`giorno ${t.dom}`:t.days.sort((a,b)=>a-b).map(d=>DS[d-1]).join(', ');
+        const isEditing=mode==='edit'&&editId===t.id;
         return(
-          <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',background:'var(--color-background-primary)',border:'0.5px solid var(--color-border-tertiary)',borderRadius:8,marginBottom:6}}>
-            <div style={{width:9,height:9,borderRadius:'50%',background:c.bd,flexShrink:0}}/>
-            <div style={{flex:1}}><div style={{fontSize:13.5,fontWeight:500}}>{t.title}</div><div style={{fontSize:11.5,color:'var(--color-text-secondary)',marginTop:1}}>{pn} · {FL[t.freq]} · {dL}</div></div>
-            <button onClick={()=>persist(list.filter(x=>x.id!==t.id))} style={S.btn({fontSize:11,padding:'2px 7px',color:'var(--color-text-danger)',borderColor:'var(--color-border-danger)'})}>✕</button>
+          <div key={t.id}>
+            <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',background:isEditing?'var(--color-background-secondary)':'var(--color-background-primary)',border:`0.5px solid ${isEditing?'var(--color-border-primary)':'var(--color-border-tertiary)'}`,borderRadius:isEditing?'8px 8px 0 0':8,marginBottom:isEditing?0:6}}>
+              <div style={{width:9,height:9,borderRadius:'50%',background:c.bd,flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13.5,fontWeight:500}}>{t.title}</div>
+                <div style={{fontSize:11.5,color:'var(--color-text-secondary)',marginTop:1}}>{perName(t.per)} · {FL[t.freq]} · {dL}</div>
+              </div>
+              <div style={{display:'flex',gap:6}}>
+                <button onClick={()=>isEditing?close():(setEditId(t.id),setMode('edit'))} style={S.btn({fontSize:11,padding:'2px 8px'})}>{isEditing?'✕':'✏️'}</button>
+                <button onClick={()=>persist(list.filter(x=>x.id!==t.id))} style={S.btn({fontSize:11,padding:'2px 7px',color:'var(--color-text-danger)',borderColor:'var(--color-border-danger)'})}>✕</button>
+              </div>
+            </div>
+            {isEditing&&(
+              <div style={{border:'0.5px solid var(--color-border-primary)',borderTop:'none',borderRadius:'0 0 8px 8px',marginBottom:6,overflow:'hidden'}}>
+                <TplForm cfg={cfg} initial={formInitial} onSave={handleSave} onCancel={close}/>
+              </div>
+            )}
           </div>
         );
       })}
-      {show&&(
-        <div style={{background:'var(--color-background-secondary)',border:'0.5px solid var(--color-border-secondary)',borderRadius:10,padding:14,marginTop:10}}>
-          <div style={{marginBottom:10}}><label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:4}}>Attività</label><input value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Es. Palestra, Spesa, Meditazione…" style={S.inp}/></div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-            <div><label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:4}}>Persona</label><select value={form.per} onChange={e=>setForm(p=>({...p,per:e.target.value}))} style={S.inp}><option value="1">{cfg.u1}</option><option value="2">{cfg.u2}</option></select></div>
-            <div><label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:4}}>Frequenza</label><select value={form.freq} onChange={e=>setForm(p=>({...p,freq:e.target.value}))} style={S.inp}><option value="weekly">Settimanale</option><option value="biweekly">Bisettimanale</option><option value="monthly">Mensile</option></select></div>
-          </div>
-          {(form.freq==='weekly'||form.freq==='biweekly')&&(<div style={{marginBottom:10}}><label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:6}}>Giorni</label><div style={{display:'flex',gap:5,flexWrap:'wrap'}}>{DS.map((d,i)=>{const day=i+1,sel=form.days.includes(day),c=UC[form.per];return<button key={i} onClick={()=>togDay(day)} style={{fontSize:11.5,padding:'3px 9px',borderRadius:20,background:sel?c.bg:'transparent',border:`1px solid ${sel?c.bd:'var(--color-border-secondary)'}`,color:sel?c.tx:'var(--color-text-secondary)',cursor:'pointer',fontFamily:'inherit'}}>{d}</button>;})}</div></div>)}
-          {form.freq==='biweekly'&&(<div style={{marginBottom:10}}><label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:5}}>Ricorrenza</label><div style={{display:'flex',gap:6}}>{['Sett. pari','Sett. dispari'].map((lbl,i)=><button key={i} onClick={()=>setForm(p=>({...p,parity:i}))} style={{fontSize:11.5,padding:'3px 10px',borderRadius:20,background:form.parity===i?'var(--color-background-info)':'transparent',border:`1px solid ${form.parity===i?'var(--color-border-info)':'var(--color-border-secondary)'}`,cursor:'pointer',fontFamily:'inherit'}}>{lbl}</button>)}</div></div>)}
-          {form.freq==='monthly'&&(<div style={{marginBottom:10}}><label style={{fontSize:11.5,color:'var(--color-text-secondary)',display:'block',marginBottom:4}}>Giorno del mese</label><input type="number" min="1" max="31" value={form.dom} onChange={e=>setForm(p=>({...p,dom:+e.target.value||1}))} style={{...S.inp,width:70}}/></div>)}
-          <div style={{display:'flex',gap:8}}><button onClick={addT} style={S.btn({padding:'5px 16px'})}>Salva</button><button onClick={()=>setShow(false)} style={S.btn({padding:'5px 16px'})}>Annulla</button></div>
-        </div>
-      )}
+      {mode==='add'&&<TplForm cfg={cfg} initial={emptyForm} onSave={handleSave} onCancel={close}/>}
     </div>
   );
 }
@@ -359,7 +461,6 @@ export default function App(){
     }
   },[]);
 
-  // ── Caricamento iniziale ───────────────────────────────────────────────
   useEffect(()=>{
     (async()=>{
       const[c,t,sp]=await Promise.all([db.get('cfg'),db.get('tpls'),db.get('setup')]);
@@ -374,7 +475,6 @@ export default function App(){
 
   useEffect(()=>{if(!ready)return;genWeek(week);genWeek(addD(week,7));},[ready,week,genWeek]);
 
-  // ── Listener real-time Firebase ────────────────────────────────────────
   useEffect(()=>{
     if(!ready)return;
     const wk=wkKey(week);
@@ -391,7 +491,6 @@ export default function App(){
     return()=>{u1();u2();};
   },[ready]);
 
-  // ── Registrazione token FCM ────────────────────────────────────────────
   useEffect(()=>{
     if(!user||!ready)return;
     (async()=>{
@@ -402,21 +501,14 @@ export default function App(){
         const token=await getToken(messaging,{vapidKey});
         if(token){
           const otherUser=user==='1'?'2':'1';
-          // Rimuovi questo token dall'altro utente se presente (evita notifiche doppie)
           const otherData=await db.get(`fcm_tokens/${otherUser}`);
-          if(otherData&&Object.values(otherData).includes(token)){
-            await db.set(`fcm_tokens/${otherUser}`,null);
-          }
-          // Salva sotto l'utente corrente (sovrascrive sempre)
+          if(otherData&&Object.values(otherData).includes(token)) await db.set(`fcm_tokens/${otherUser}`,null);
           await db.set(`fcm_tokens/${user}`,{main:token});
         }
-      }catch(e){
-        console.log('Notifiche non disponibili:',e.message);
-      }
+      }catch(e){ console.log('Notifiche non disponibili:',e.message); }
     })();
   },[user,ready]);
 
-  // ── Auto-sposta task non completati al giorno corrente ─────────────────
   const autoMoved=useRef(false);
   useEffect(()=>{
     if(!ready||autoMoved.current)return;
@@ -442,7 +534,6 @@ export default function App(){
     },300);
   },[ready]);
 
-  // ── Azioni sui task ────────────────────────────────────────────────────
   const saveDay=async(dateStr,tasks)=>{
     const wk=wkKey(getMon(fromKey(dateStr)));
     if(!wkCache.current[wk])wkCache.current[wk]={};
@@ -451,19 +542,21 @@ export default function App(){
     setDays(prev=>({...prev,[dateStr]:tasks}));
   };
 
-  const toggle  =(ds,id)=>saveDay(ds,(days[ds]||[]).map(t=>t.id===id?{...t,done:!t.done,doneAt:!t.done?new Date().toISOString():null}:t));
-  const delTask =(ds,id)=>saveDay(ds,(days[ds]||[]).filter(t=>t.id!==id));
+  const toggle=(ds,id)=>saveDay(ds,(days[ds]||[]).map(t=>t.id===id?{...t,done:!t.done,doneAt:!t.done?new Date().toISOString():null}:t));
+  const delTask=(ds,id)=>saveDay(ds,(days[ds]||[]).filter(t=>t.id!==id));
 
   const addTask=async(dateStr,title,per)=>{
     await saveDay(dateStr,[...(days[dateStr]||[]),{id:uid(),tid:null,title,per,done:false,doneAt:null,movedFrom:null}]);
-    // Notifica solo se aggiungo sulla lista dell'ALTRA persona
-    if(user&&per!==user&&isSetup){
+    if(user&&isSetup){
       const addedBy=user==='1'?cfg.u1:cfg.u2;
-      fetch('/.netlify/functions/notify',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({toUser:per,taskTitle:title,addedBy}),
-      }).catch(()=>{});
+      if(per==='S'){
+        // Task condiviso → notifica l'altra persona
+        const otherUser=user==='1'?'2':'1';
+        fetch('/.netlify/functions/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toUser:otherUser,taskTitle:title,addedBy,shared:true})}).catch(()=>{});
+      } else if(per!==user){
+        // Task personale aggiunto alla lista dell'altro
+        fetch('/.netlify/functions/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toUser:per,taskTitle:title,addedBy})}).catch(()=>{});
+      }
     }
   };
 
@@ -476,7 +569,6 @@ export default function App(){
   const saveTpls=async nt=>{setTpls(nt);tplsR.current=nt;await db.set('tpls',nt);await regenerateFuture(nt);};
   const saveCfg =async c=>{setCfg(c);await db.set('cfg',c);await db.set('setup',true);setIsSetup(true);};
 
-  // ── Render ─────────────────────────────────────────────────────────────
   if(!ready)   return<div style={{padding:'4rem',textAlign:'center',color:'var(--color-text-secondary)',fontSize:15}}>Connessione a Firebase…</div>;
   if(!isSetup) return<Setup onDone={saveCfg}/>;
   if(!user)    return<UserPick cfg={cfg} onPick={setUser}/>;
