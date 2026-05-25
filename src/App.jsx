@@ -428,11 +428,12 @@ export default function App(){
   ,[]);
 
   const genWeek=useCallback(async mon=>{
+    const today=now0();
     const wk=wkKey(mon);
     let wd=wkCache.current[wk];
     if(wd===undefined){const stored=await db.get(wk);wkCache.current[wk]=stored;wd=stored;}
     wd=wd||{};const wn=getWn(mon);let changed=false;
-    for(let i=0;i<7;i++){const d=addD(mon,i),k=toKey(d);if(wd[k]!==undefined)continue;wd[k]=buildDay(d,d.getDay()===0?7:d.getDay(),wn);changed=true;}
+    for(let i=0;i<7;i++){const d=addD(mon,i),k=toKey(d);if(wd[k]!==undefined)continue;wd[k] = d < today ? [] : buildDay(d,d.getDay()===0?7:d.getDay(),wn);changed=true;}
     if(changed){wkCache.current[wk]=wd;await db.set(wk,wd);}
     setDays(prev=>({...prev,...wd}));
   },[buildDay]);
